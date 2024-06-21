@@ -1,3 +1,3 @@
-# Git_course
+# Data_projects
 learn Git 
 ## Projects Notes
