@@ -1,0 +1,54 @@
+import org.apache.spark.sql.{SparkSession, DataFrame}
+import org.apache.spark.sql.functions._
+object new7 {
+  def main(args: Array[String]): Unit = {
+    val spark = SparkSession.builder
+      .appName("Netflix Data Analysis")
+      .master("local[*]")
+      .getOrCreate()
+    // Réduire les logs
+    spark.sparkContext.setLogLevel("ERROR")
+    // load
+    val file = "src/main/dataset/Netflix_2011_2016.csv"
+    val df = spark.read
+      .option("header", "true")
+      .option("inferSchema", "true")
+      .csv(file)
+    // Quels sont les noms des colonnes ?
+    val columnNames = df.columns
+    println("Column Names: " + columnNames.mkString(", "))
+    // a quoi ressemble le schéma ?
+    df.printSchema()
+    // afficher les 5 premières lignes
+    df.show(5)
+    // utilisez describe() pour en apprendre davantage sur le DataFrame
+    df.describe().show()
+    // créer un nouveau DataFrame avec une colonne appelée HV Ratio
+    val dfWithHVRatio = df.withColumn("HV Ratio", col("High") / col("Volume"))
+    dfWithHVRatio.show(5)
+    // quel jour a eu le pic le plus élevé en prix ?
+    df.orderBy(col("High").desc).select("Date").show(1)
+    // quelle est la moyenne de la colonne Close ?
+    df.select(avg("Close")).show()
+    // quel est le maximum et le minimum de la colonne Volume ?
+    df.select(max("Volume"), min("Volume")).show()
+    // pendant combien de jours le Close était-il inférieur à 600 $ ?
+    val daysCloseBelow600 = df.filter(col("Close") < 600).count()
+    println(s"Nombre de jour  Close < 600: $daysCloseBelow600")
+    // quel pourcentage du temps le High était-il supérieur à 500 $ ?
+    val highGreaterThan500 = df.filter(col("High") > 500).count()
+    val totalDays = df.count()
+    val percentageHighGreaterThan500 = (highGreaterThan500.toDouble / totalDays) * 100
+    println(s"pourcentage du temps avec High > 500: $percentageHighGreaterThan500%")
+    // quelle est la corrélation de Pearson entre High et Volume ?
+    val pearsonCorrelation = df.stat.corr("High", "Volume")
+    println(s"correlation entre High and Volume: $pearsonCorrelation")
+    // quel est le High maximum par année ?
+    val dfWithYear = df.withColumn("Year", year(col("Date")))
+    dfWithYear.groupBy("Year").agg(max("High").as("Max High")).orderBy("Year").show()
+    // quelle est la moyenne de Close pour chaque mois du calendrier ?
+    val dfWithMonth = df.withColumn("Month", month(col("Date")))
+    dfWithMonth.groupBy("Year", "Month").agg(avg("Close").as("Average Close")).orderBy("Year", "Month").show()
+    spark.stop()
+  }
+}
